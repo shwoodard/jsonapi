@@ -1,42 +1,111 @@
 package jsonapi
 
-import "reflect"
+import (
+	"errors"
+	"reflect"
+)
 
-type MarshallingFunc func(interface{}) (string, error)
-type UnmarshallingFunc func(string) (interface{}, error)
+var (
+	ErrIncorrectInType  = errors.New("Incorrect input type supplied for marshal custom type")
+	ErrIncorrectOutType = errors.New("Incorrect output type supplied for unmarshal custom type")
+	customTypes         = map[reflect.Type]customType{}
+)
 
-// map of functions to use to convert the field value into a JSON string
-var customTypeMarshallingFuncs map[reflect.Type]MarshallingFunc
+type customType struct {
+	inType, outType reflect.Type
+	marshaller      TypeMarshaller
+	unmarshaller    TypeUnmarshaller
+}
 
-// map of functions to use to convert the JSON string value into the target field
-var customTypeUnmarshallingFuncs map[reflect.Type]UnmarshallingFunc
+func newCustomType(
+	inType, outType reflect.Type,
+	marshaller TypeMarshaller,
+	unmarshaller TypeUnmarshaller) customType {
 
-// init initializes the maps
-func init() {
-	customTypeMarshallingFuncs = make(map[reflect.Type]MarshallingFunc, 0)
-	customTypeUnmarshallingFuncs = make(map[reflect.Type]UnmarshallingFunc, 0)
+	return customType{
+		inType:       inType,
+		outType:      outType,
+		marshaller:   marshaller,
+		unmarshaller: unmarshaller,
+	}
+}
+
+func (ct customType) marshal(in interface{}) (interface{}, error) {
+	if reflect.TypeOf(in) != ct.inType {
+		return nil, ErrIncorrectInType
+	}
+
+	out, err := ct.marshaller.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+
+	if reflect.TypeOf(out) != ct.outType {
+		return nil, ErrIncorrectOutType
+	}
+
+	return out, nil
+}
+
+func (ct customType) unmarshal(out interface{}) (interface{}, error) {
+	if reflect.TypeOf(out) != ct.outType {
+		return nil, ErrIncorrectOutType
+	}
+
+	in, err := ct.unmarshaller.Unmarshal(out)
+	if err != nil {
+		return nil, err
+	}
+
+	if reflect.TypeOf(in) != ct.inType {
+		return nil, ErrIncorrectInType
+	}
+
+	return in, nil
+}
+
+type TypeMarshaller interface {
+	Marshal(interface{}) (interface{}, error)
+}
+
+type TypeUnmarshaller interface {
+	Unmarshal(interface{}) (interface{}, error)
+}
+
+type TypeMarshalFunc func(interface{}) (interface{}, error)
+
+func (tmf TypeMarshalFunc) Marshal(in interface{}) (interface{}, error) {
+	return tmf(in)
+}
+
+type TypeUnmarshalFunc func(interface{}) (interface{}, error)
+
+func (tuf TypeUnmarshalFunc) Unmarshal(out interface{}) (interface{}, error) {
+	return tuf(out)
 }
 
 // IsRegisteredType checks if the given type `t` is registered as a custom type
 func IsRegisteredType(t reflect.Type) bool {
-	_, ok := customTypeMarshallingFuncs[t]
+	_, ok := customTypes[t]
 	return ok
 }
 
-// RegisterType registers the functions to convert the field from a custom type to a string and vice-versa
-// in the JSON requests/responses.
-// The `marshallingFunc` must be a function that returns a string (along with an error if something wrong happened)
-// and the `unmarshallingFunc` must be a function that takes
-// a string as its sole argument and return an instance of `typeName` (along with an error if something wrong happened).
-// Eg:  `uuid.FromString(string) uuid.UUID {...} and `uuid.String() string {...}
-func RegisterType(customType reflect.Type, marshallingFunc MarshallingFunc, unmarshallingFunc UnmarshallingFunc) {
-	// register the pointer to the type
-	customTypeMarshallingFuncs[customType] = marshallingFunc
-	customTypeUnmarshallingFuncs[customType] = unmarshallingFunc
+// RegisterCustomType registers a custom type for use in marshalling and unmarshalling
+func RegisterCustomType(
+	inType, outType reflect.Type,
+	marshaller TypeMarshaller,
+	unmarshaller TypeUnmarshaller) {
+	customTypes[inType] = newCustomType(inType, outType, marshaller, unmarshaller)
 }
 
-// resetCustomTypeRegistrations resets the custom type registration, which is useful during testing
-func resetCustomTypeRegistrations() {
-	customTypeMarshallingFuncs = make(map[reflect.Type]MarshallingFunc, 0)
-	customTypeUnmarshallingFuncs = make(map[reflect.Type]UnmarshallingFunc, 0)
+func RegisterCustomTypeFunc(
+	inType, outType reflect.Type,
+	marshaller TypeMarshalFunc,
+	unmarshaller TypeUnmarshalFunc) {
+	RegisterCustomType(inType, outType, marshaller, unmarshaller)
+}
+
+// ClearCustomTypes resets the custom type registration
+func ClearCustomTypes() {
+	customTypes = map[reflect.Type]customType{}
 }

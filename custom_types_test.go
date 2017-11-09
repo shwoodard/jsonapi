@@ -8,13 +8,13 @@ import (
 func TestRegisterCustomTypes(t *testing.T) {
 	for _, uuidType := range []reflect.Type{reflect.TypeOf(UUID{}), reflect.TypeOf(&UUID{})} {
 		// given
-		resetCustomTypeRegistrations() // make sure no other registration interferes with this test
+		ClearCustomTypes() // make sure no other registration interferes with this test
 		// when
-		RegisterType(uuidType,
-			func(value interface{}) (string, error) {
+		RegisterCustomTypeFunc(uuidType, reflect.TypeOf(""),
+			func(value interface{}) (interface{}, error) {
 				return "", nil
 			},
-			func(value string) (interface{}, error) {
+			func(value interface{}) (interface{}, error) {
 				return nil, nil
 			})
 		// then
