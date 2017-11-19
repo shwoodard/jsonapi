@@ -1,15 +1,47 @@
 package jsonapi
 
 import (
-	"errors"
+	"fmt"
 	"reflect"
 )
 
 var (
-	ErrIncorrectInType  = errors.New("Incorrect input type supplied for marshal custom type")
-	ErrIncorrectOutType = errors.New("Incorrect output type supplied for unmarshal custom type")
-	customTypes         = map[reflect.Type]customType{}
+	customTypes = map[reflect.Type]customType{}
 )
+
+type ErrIncorrectInType struct {
+	expectedInType, incorrectInType reflect.Type
+}
+
+func (inErr *ErrIncorrectInType) Error() string {
+	return fmt.Sprintf("Expected in type, %#v, got, %#v",
+		inErr.expectedInType, inErr.incorrectInType)
+}
+
+func newErrIncorrectInType(
+	expected, actual reflect.Type) *ErrIncorrectInType {
+	return &ErrIncorrectInType{
+		expectedInType:  expected,
+		incorrectInType: actual,
+	}
+}
+
+type ErrIncorrectOutType struct {
+	expectedOutType, incorrectOutType reflect.Type
+}
+
+func (outErr *ErrIncorrectOutType) Error() string {
+	return fmt.Sprintf("Expected out type, %#v, got, %#v",
+		outErr.expectedOutType, outErr.incorrectOutType)
+}
+
+func newErrIncorrectOutType(
+	expected, actual reflect.Type) *ErrIncorrectOutType {
+	return &ErrIncorrectOutType{
+		expectedOutType:  expected,
+		incorrectOutType: actual,
+	}
+}
 
 type customType struct {
 	inType, outType reflect.Type
@@ -30,38 +62,42 @@ func newCustomType(
 	}
 }
 
-func (ct customType) marshal(in interface{}) (interface{}, error) {
-	if reflect.TypeOf(in) != ct.inType {
-		return nil, ErrIncorrectInType
+func (ct customType) marshal(out interface{}) (interface{}, error) {
+	inputType := reflect.TypeOf(out)
+	if inputType != ct.outType {
+		return nil, newErrIncorrectOutType(ct.outType, inputType)
 	}
 
-	out, err := ct.marshaller.Marshal(in)
+	in, err := ct.marshaller.Marshal(out)
 	if err != nil {
 		return nil, err
 	}
 
-	if reflect.TypeOf(out) != ct.outType {
-		return nil, ErrIncorrectOutType
-	}
-
-	return out, nil
-}
-
-func (ct customType) unmarshal(out interface{}) (interface{}, error) {
-	if reflect.TypeOf(out) != ct.outType {
-		return nil, ErrIncorrectOutType
-	}
-
-	in, err := ct.unmarshaller.Unmarshal(out)
-	if err != nil {
-		return nil, err
-	}
-
-	if reflect.TypeOf(in) != ct.inType {
-		return nil, ErrIncorrectInType
+	outputType := reflect.TypeOf(in)
+	if outputType != ct.inType {
+		return nil, newErrIncorrectInType(ct.inType, outputType)
 	}
 
 	return in, nil
+}
+
+func (ct customType) unmarshal(in interface{}) (interface{}, error) {
+	inputType := reflect.TypeOf(in)
+	if inputType != ct.inType {
+		return nil, newErrIncorrectInType(ct.inType, inputType)
+	}
+
+	out, err := ct.unmarshaller.Unmarshal(in)
+	if err != nil {
+		return nil, err
+	}
+
+	outputType := reflect.TypeOf(out)
+	if outputType != ct.outType {
+		return nil, newErrIncorrectOutType(ct.outType, outputType)
+	}
+
+	return out, nil
 }
 
 type TypeMarshaller interface {
@@ -90,12 +126,14 @@ func IsRegisteredType(t reflect.Type) bool {
 	return ok
 }
 
-// RegisterCustomType registers a custom type for use in marshalling and unmarshalling
+// RegisterCustomType registers a custom type for use in marshalling and
+// unmarshalling
 func RegisterCustomType(
 	inType, outType reflect.Type,
 	marshaller TypeMarshaller,
 	unmarshaller TypeUnmarshaller) {
-	customTypes[inType] = newCustomType(inType, outType, marshaller, unmarshaller)
+	customTypes[inType] = newCustomType(
+		inType, outType, marshaller, unmarshaller)
 }
 
 func RegisterCustomTypeFunc(
