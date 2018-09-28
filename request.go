@@ -217,44 +217,13 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			// Convert the numeric float to one of the supported ID numeric types
 			// (int[8,16,32,64] or uint[8,16,32,64])
-			var idValue reflect.Value
-			switch kind {
-			case reflect.Int:
-				n := int(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int8:
-				n := int8(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int16:
-				n := int16(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int32:
-				n := int32(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int64:
-				n := int64(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint:
-				n := uint(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint8:
-				n := uint8(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint16:
-				n := uint16(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint32:
-				n := uint32(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint64:
-				n := uint64(floatValue)
-				idValue = reflect.ValueOf(&n)
-			default:
+      idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
+      if err != nil {
 				// We had a JSON float (numeric), but our field was not one of the
 				// allowed numeric types
 				er = ErrBadJSONAPIID
 				break
-			}
+      }
 
 			assign(fieldValue, idValue)
 		} else if annotation == annotationClientID {
