@@ -421,7 +421,7 @@ func unmarshalAttribute(
 
 	// JSON value was a float (numeric)
 	if value.Kind() == reflect.Float64 {
-		value, err = handleNumeric(attribute, args, fieldType, fieldValue)
+		value, err = handleNumeric(attribute, fieldType, fieldValue)
 		return
 	}
 
@@ -507,7 +507,6 @@ func handleTime(
 
 func handleNumeric(
 	attribute interface{},
-	args []string,
 	fieldType reflect.Type,
 	fieldValue reflect.Value) (reflect.Value, error) {
 	v := reflect.ValueOf(attribute)
