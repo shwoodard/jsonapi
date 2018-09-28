@@ -1058,7 +1058,6 @@ func TestUnmarshalNestedStructPtr(t *testing.T) {
 }
 
 func TestUnmarshalNestedStruct(t *testing.T) {
-
 	boss := map[string]interface{}{
 		"firstname": "Hubert",
 		"surname":   "Farnsworth",
