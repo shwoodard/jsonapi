@@ -217,13 +217,13 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			// Convert the numeric float to one of the supported ID numeric types
 			// (int[8,16,32,64] or uint[8,16,32,64])
-      idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
-      if err != nil {
+			idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
+			if err != nil {
 				// We had a JSON float (numeric), but our field was not one of the
 				// allowed numeric types
 				er = ErrBadJSONAPIID
 				break
-      }
+			}
 
 			assign(fieldValue, idValue)
 		} else if annotation == annotationClientID {
