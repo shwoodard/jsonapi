@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -1073,22 +1074,22 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 				"name":       "Planet Express",
 				"boss":       boss,
 				"founded-at": "2016-08-17T08:27:12Z",
-				"teams": []Team{
-					Team{
-						Name: "Dev",
-						Members: []Employee{
-							Employee{Firstname: "Sean"},
-							Employee{Firstname: "Iz"},
+				"teams": []map[string]interface{}{
+					map[string]interface{}{
+						"name": "Dev",
+						"members": []map[string]interface{}{
+							map[string]interface{}{"firstname": "Sean"},
+							map[string]interface{}{"firstname": "Iz"},
 						},
-						Leader: &Employee{Firstname: "Iz"},
+						"leader": map[string]interface{}{"firstname": "Iz"},
 					},
-					Team{
-						Name: "DxE",
-						Members: []Employee{
-							Employee{Firstname: "Akshay"},
-							Employee{Firstname: "Peri"},
+					map[string]interface{}{
+						"name": "DxE",
+						"members": []map[string]interface{}{
+							map[string]interface{}{"firstname": "Akshay"},
+							map[string]interface{}{"firstname": "Peri"},
 						},
-						Leader: &Employee{Firstname: "Peri"},
+						"leader": map[string]interface{}{"firstname": "Peri"},
 					},
 				},
 			},
@@ -1099,12 +1100,15 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fmt.Fprintf(os.Stderr, "Data: %#v\n", string(data))
 	in := bytes.NewReader(data)
 	out := new(Company)
 
 	if err := UnmarshalPayload(in, out); err != nil {
 		t.Fatal(err)
 	}
+
+	fmt.Fprintf(os.Stderr, "Result: %#v\n\n", out)
 
 	if out.Boss.Firstname != "Hubert" {
 		t.Fatalf("expected `Hubert` at out.Boss.Firstname, but got `%s`", out.Boss.Firstname)

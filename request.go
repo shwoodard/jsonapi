@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -142,11 +144,15 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			debug.PrintStack()
+			fmt.Fprintf(os.Stderr, "recover: %#v\n\n", r)
 			err = fmt.Errorf("data is not a jsonapi representation of '%v'", model.Type())
 		}
 	}()
 
+	fmt.Fprintf(os.Stderr, "model: %#v\n\n", model)
 	modelValue := model.Elem()
+	fmt.Fprintf(os.Stderr, "modelValue: %#v\n\n", modelValue)
 	modelType := model.Type().Elem()
 
 	var er error
@@ -576,20 +582,35 @@ func handleStruct(
 	args []string,
 	fieldType reflect.Type,
 	fieldValue reflect.Value) (reflect.Value, error) {
-	model := reflect.New(fieldValue.Type())
+
+	//fmt.Fprintf(os.Stderr, "fieldValue.Type(): %#v\n", &node.Attributes)
+	//model := reflect.New(fieldValue.Type())
+	node := new(Node)
 
 	data, err := json.Marshal(attribute)
 	if err != nil {
-		return model, err
+		return reflect.Value{}, err
 	}
 
-	err = json.Unmarshal(data, model.Interface())
-
-	if err != nil {
-		return model, err
+	if err := json.Unmarshal(data, &node.Attributes); err != nil {
+		return reflect.Value{}, err
 	}
 
-	return model, err
+	fmt.Fprintf(os.Stderr, "node.Attributes: %#v\n", &node.Attributes)
+
+	//if fieldValue.Kind() == reflect.Ptr {
+	//model = reflect.Indirect(model)
+	//}
+
+	if err := unmarshalNode(node, fieldValue, nil); err != nil {
+		fmt.Fprintf(os.Stderr, "unmarshalNode err: %#v\n", err)
+
+		return reflect.Value{}, err
+	}
+
+	fmt.Fprintf(os.Stderr, "model: %#v\n\n", fieldValue)
+
+	return fieldValue, nil
 }
 
 func handleStructSlice(
@@ -603,13 +624,16 @@ func handleStructSlice(
 		model := reflect.New(fieldValue.Type().Elem()).Elem()
 		modelType := model.Type()
 
-		value, err := handleStruct(data, []string{}, modelType, model)
+		value, err := handleStruct(data, args, modelType, model)
+
+		fmt.Fprintf(os.Stderr, "struct slice value: %#v\n", value)
 
 		if err != nil {
 			continue
 		}
 
 		models = reflect.Append(models, reflect.Indirect(value))
+		fmt.Fprintf(os.Stderr, "slice models: %#v\n\n\n", models)
 	}
 
 	return models, nil
