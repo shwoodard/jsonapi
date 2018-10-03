@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	unsuportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
+	unsupportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
 )
 
 var (
@@ -333,7 +333,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 		} else {
-			er = fmt.Errorf(unsuportedStructTagMsg, annotation)
+			er = fmt.Errorf(unsupportedStructTagMsg, annotation)
 		}
 	}
 
