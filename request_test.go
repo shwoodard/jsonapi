@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -1014,8 +1013,8 @@ func sampleSerializedEmbeddedTestModel() *Blog {
 
 func TestUnmarshalNestedStructPtr(t *testing.T) {
 	type Director struct {
-		Firstname string `json:"firstname"`
-		Surname   string `json:"surname"`
+		Firstname string `jsonapi:"attr,firstname"`
+		Surname   string `jsonapi:"attr,surname"`
 	}
 	type Movie struct {
 		ID       string    `jsonapi:"primary,movies"`
@@ -1100,15 +1099,12 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Fprintf(os.Stderr, "Data: %#v\n", string(data))
 	in := bytes.NewReader(data)
 	out := new(Company)
 
 	if err := UnmarshalPayload(in, out); err != nil {
 		t.Fatal(err)
 	}
-
-	fmt.Fprintf(os.Stderr, "Result: %#v\n\n", out)
 
 	if out.Boss.Firstname != "Hubert" {
 		t.Fatalf("expected `Hubert` at out.Boss.Firstname, but got `%s`", out.Boss.Firstname)

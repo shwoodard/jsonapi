@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -144,16 +142,12 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			debug.PrintStack()
-			fmt.Fprintf(os.Stderr, "recover: %#v\n\n", r)
 			err = fmt.Errorf("data is not a jsonapi representation of '%v'", model.Type())
 		}
 	}()
 
-	fmt.Fprintf(os.Stderr, "model: %#v\n\n", model)
 	modelValue := model.Elem()
-	fmt.Fprintf(os.Stderr, "modelValue: %#v\n\n", modelValue)
-	modelType := model.Type().Elem()
+	modelType := modelValue.Type()
 
 	var er error
 
@@ -383,14 +377,14 @@ func unmarshalAttribute(
 
 	// Handle field of type struct
 	if fieldValue.Type().Kind() == reflect.Struct {
-		value, err = handleStruct(attribute, args, fieldType, fieldValue)
+		value, err = handleStruct(attribute, fieldValue)
 		return
 	}
 
 	// Handle field containing slice of structs
 	if fieldValue.Type().Kind() == reflect.Slice &&
 		reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.Struct {
-		value, err = handleStructSlice(attribute, args, fieldType, fieldValue)
+		value, err = handleStructSlice(attribute, fieldValue)
 		return
 	}
 
@@ -558,12 +552,12 @@ func handlePointer(
 		concreteVal = reflect.ValueOf(&cVal)
 	case map[string]interface{}:
 		var err error
-		concreteVal, err = handleStruct(attribute, args, fieldType, fieldValue)
+		concreteVal, err = handleStruct(attribute, fieldValue)
 		if err != nil {
 			return reflect.Value{}, newErrUnsupportedPtrType(
 				reflect.ValueOf(attribute), fieldType, structField)
 		}
-		return concreteVal.Elem(), err
+		return concreteVal, err
 	default:
 		return reflect.Value{}, newErrUnsupportedPtrType(
 			reflect.ValueOf(attribute), fieldType, structField)
@@ -579,61 +573,48 @@ func handlePointer(
 
 func handleStruct(
 	attribute interface{},
-	args []string,
-	fieldType reflect.Type,
 	fieldValue reflect.Value) (reflect.Value, error) {
-
-	//fmt.Fprintf(os.Stderr, "fieldValue.Type(): %#v\n", &node.Attributes)
-	//model := reflect.New(fieldValue.Type())
-	node := new(Node)
 
 	data, err := json.Marshal(attribute)
 	if err != nil {
 		return reflect.Value{}, err
 	}
 
+	node := new(Node)
 	if err := json.Unmarshal(data, &node.Attributes); err != nil {
 		return reflect.Value{}, err
 	}
 
-	fmt.Fprintf(os.Stderr, "node.Attributes: %#v\n", &node.Attributes)
+	var model reflect.Value
+	if (fieldValue.Kind() == reflect.Ptr) {
+		model = reflect.New(fieldValue.Type().Elem())
+	} else {
+		model = reflect.New(fieldValue.Type())
+	}
 
-	//if fieldValue.Kind() == reflect.Ptr {
-	//model = reflect.Indirect(model)
-	//}
-
-	if err := unmarshalNode(node, fieldValue, nil); err != nil {
-		fmt.Fprintf(os.Stderr, "unmarshalNode err: %#v\n", err)
-
+	if err := unmarshalNode(node, model, nil); err != nil {
 		return reflect.Value{}, err
 	}
 
-	fmt.Fprintf(os.Stderr, "model: %#v\n\n", fieldValue)
 
-	return fieldValue, nil
+	return model, nil
 }
 
 func handleStructSlice(
 	attribute interface{},
-	args []string,
-	fieldType reflect.Type,
 	fieldValue reflect.Value) (reflect.Value, error) {
 	models := reflect.New(fieldValue.Type()).Elem()
 	dataMap := reflect.ValueOf(attribute).Interface().([]interface{})
 	for _, data := range dataMap {
 		model := reflect.New(fieldValue.Type().Elem()).Elem()
-		modelType := model.Type()
 
-		value, err := handleStruct(data, args, modelType, model)
-
-		fmt.Fprintf(os.Stderr, "struct slice value: %#v\n", value)
+		value, err := handleStruct(data, model)
 
 		if err != nil {
 			continue
 		}
 
 		models = reflect.Append(models, reflect.Indirect(value))
-		fmt.Fprintf(os.Stderr, "slice models: %#v\n\n\n", models)
 	}
 
 	return models, nil
