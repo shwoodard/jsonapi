@@ -364,14 +364,14 @@ func unmarshalAttribute(
 
 	// Handle field of type []string
 	if fieldValue.Type() == reflect.TypeOf([]string{}) {
-		value, err = handleStringSlice(attribute, args, fieldType, fieldValue)
+		value, err = handleStringSlice(attribute)
 		return
 	}
 
 	// Handle field of type time.Time
 	if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
 		fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-		value, err = handleTime(attribute, args, fieldType, fieldValue)
+		value, err = handleTime(attribute, args, fieldValue)
 		return
 	}
 
@@ -409,11 +409,7 @@ func unmarshalAttribute(
 	return
 }
 
-func handleStringSlice(
-	attribute interface{},
-	args []string,
-	fieldType reflect.Type,
-	fieldValue reflect.Value) (reflect.Value, error) {
+func handleStringSlice(attribute interface{}) (reflect.Value, error) {
 	v := reflect.ValueOf(attribute)
 	values := make([]string, v.Len())
 	for i := 0; i < v.Len(); i++ {
@@ -423,11 +419,7 @@ func handleStringSlice(
 	return reflect.ValueOf(values), nil
 }
 
-func handleTime(
-	attribute interface{},
-	args []string,
-	fieldType reflect.Type,
-	fieldValue reflect.Value) (reflect.Value, error) {
+func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) (reflect.Value, error) {
 	var isIso8601 bool
 	v := reflect.ValueOf(attribute)
 
