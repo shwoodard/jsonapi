@@ -181,12 +181,22 @@ type CustomIntType int
 type CustomFloatType float64
 type CustomStringType string
 
+type CustomMapType map[string]interface{}
+type CustomSliceMapType []map[string]interface{}
+
 type CustomAttributeTypes struct {
 	ID string `jsonapi:"primary,customtypes"`
 
 	Int        CustomIntType  `jsonapi:"attr,int"`
 	IntPtr     *CustomIntType `jsonapi:"attr,intptr"`
 	IntPtrNull *CustomIntType `jsonapi:"attr,intptrnull"`
+
+	MapType          CustomMapType       `jsonapi:"attr,maptype"`
+	MapTypePtr       *CustomMapType      `jsonapi:"attr,maptypeptr"`
+	MapTypePtrNull   *CustomMapType      `jsonapi:"attr,maptypenull"`
+	SliceMapType     CustomSliceMapType  `jsonapi:"attr,slicemaptype"`
+	SliceMapTypePtr  *CustomSliceMapType `jsonapi:"attr,slicemaptypeptr"`
+	SliceMapTypeNull *CustomSliceMapType `jsonapi:"attr,slicemaptypenull"`
 
 	Float  CustomFloatType  `jsonapi:"attr,float"`
 	String CustomStringType `jsonapi:"attr,string"`

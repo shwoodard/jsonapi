@@ -822,6 +822,66 @@ func TestUnmarshalCustomTypeAttributes(t *testing.T) {
 	}
 }
 
+func TestUnmarshalCustomTypeAttributes_mapTypes(t *testing.T) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "customtypes",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"int":        5,
+				"intptr":     5,
+				"intptrnull": nil,
+				"maptype": map[string]interface{}{
+					"foo": "bar",
+					"bas": 3,
+				},
+				"maptypeptr": map[string]interface{}{
+					"foo": "fubar",
+					"bas": 4,
+				},
+				"maptypenull": nil,
+				"slicemaptype": []map[string]interface{}{
+					{
+						"foo": "bar",
+						"bas": 3,
+					},
+				},
+				"slicemaptypeptr": []map[string]interface{}{
+					{
+						"foo": "fubar",
+						"bas": 4,
+					},
+				},
+				"slicemaptypenull": nil,
+				"float":            1.5,
+				"string":           "Test",
+			},
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse JSON API payload
+	customAttributeTypes := new(CustomAttributeTypes)
+	if err := UnmarshalPayload(bytes.NewReader(payload), customAttributeTypes); err != nil {
+		t.Fatal(err)
+	}
+
+	if expected, actual := "bar", customAttributeTypes.MapType["foo"]; expected != actual {
+		t.Fatalf("Was expecting custom value to be `%s`, got `%s`", expected, actual)
+	}
+
+	if expected, actual := float64(3), customAttributeTypes.MapType["bas"].(float64); expected != actual {
+		t.Fatalf("Was expecting custom value to be `%f`, got `%f`", expected, actual)
+	}
+
+	if expected, actual := "bar", customAttributeTypes.SliceMapType[0]["foo"]; actual != expected {
+		t.Fatalf("Was expecting %s, was %s, for SliceMapType[0]", expected, actual)
+	}
+}
+
 func TestUnmarshalCustomTypeAttributes_ErrInvalidType(t *testing.T) {
 	data := map[string]interface{}{
 		"data": map[string]interface{}{
