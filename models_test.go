@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -25,10 +26,31 @@ type WithPointer struct {
 	FloatVal *float32 `jsonapi:"attr,float-val"`
 }
 
+const PrettyPrintTimeFormat = "The time is 15:04:05. The year is 2006, and it is day 2 of January."
+
+type PrettyPrintTime struct {
+	time.Time
+}
+
+func (ppt *PrettyPrintTime) UnmarshalJSON(b []byte) error {
+	t, err := time.Parse(PrettyPrintTimeFormat, string(b))
+	if err != nil {
+		return err
+	}
+
+	ppt.Time = t
+	return nil
+}
+
+func (ppt *PrettyPrintTime) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ppt.Time.Format(PrettyPrintTimeFormat))
+}
+
 type Timestamp struct {
-	ID   int        `jsonapi:"primary,timestamps"`
-	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`
-	Next *time.Time `jsonapi:"attr,next,iso8601"`
+	ID          int              `jsonapi:"primary,timestamps"`
+	Time        time.Time        `jsonapi:"attr,timestamp,iso8601"`
+	Next        *time.Time       `jsonapi:"attr,next,iso8601"`
+	PrettyPrint *PrettyPrintTime `jsonapi:"attr,pretty-print"`
 }
 
 type Car struct {

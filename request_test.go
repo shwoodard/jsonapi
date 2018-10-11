@@ -404,6 +404,34 @@ func TestUnmarshalInvalidISO8601(t *testing.T) {
 	}
 }
 
+func TestUnmarshalCustomTimeType(t *testing.T) {
+	now := time.Now()
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamps",
+			Attributes: map[string]interface{}{
+				"pretty-print": string(now.UTC().Format(PrettyPrintTimeFormat)),
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamp)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := now.UTC()
+
+	if !out.PrettyPrint.Equal(expected) {
+		t.Fatal("Parsing the custom timestamp failed")
+	}
+
+}
+
 func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
 	data, err := json.Marshal(samplePayloadWithoutIncluded())
 	if err != nil {
